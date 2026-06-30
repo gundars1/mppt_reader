@@ -1,1 +1,2 @@
-from .mppt_reader import MPPTReader
+from .sensor import MPPTReader
+
