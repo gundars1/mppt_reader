@@ -9,16 +9,22 @@ AUTO_LOAD = ["uart"]
 mppt_reader_ns = cg.esphome_ns.namespace("mppt_reader")
 MPPTReader = mppt_reader_ns.class_("MPPTReader", cg.Component, uart.UARTDevice)
 
-CONFIG_SCHEMA = cv.Schema({
+# --- Component schema ---
+BASE_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MPPTReader),
     cv.Required(CONF_UART_ID): cv.use_id(uart.UARTComponent),
     cv.Required("de_pin"): pins.gpio_output_pin_schema,
-    cv.Required("pv_voltage"): sensor.sensor_schema(),
-    cv.Required("batt_voltage"): sensor.sensor_schema(),
-    cv.Required("current"): sensor.sensor_schema(),
-    cv.Required("daily_wh"): sensor.sensor_schema(),
-    cv.Required("total_wh"): sensor.sensor_schema(),
+}).extend(cv.COMPONENT_SCHEMA)
+
+# --- Sensor schema ---
+SENSORS = ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]
+
+SENSOR_SCHEMA = cv.Schema({
+    cv.Required(key): sensor.sensor_schema()
+    for key in SENSORS
 })
+
+CONFIG_SCHEMA = cv.All(BASE_SCHEMA, SENSOR_SCHEMA)
 
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -30,6 +36,6 @@ def to_code(config):
     de_pin = yield cg.gpio_pin_expression(config["de_pin"])
     cg.add(var.set_de_pin(de_pin))
 
-    for key in ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]:
+    for key in SENSORS:
         sens = yield sensor.new_sensor(config[key])
         cg.add(getattr(var, f"set_{key}_sensor")(sens))
