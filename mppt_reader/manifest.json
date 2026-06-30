@@ -1,9 +1,0 @@
-{
-  "name": "mppt_reader",
-  "version": "1.0.0",
-  "files": [
-    "mppt_reader.py",
-    "mppt_reader.cpp",
-    "mppt_reader.h"
-  ]
-}
