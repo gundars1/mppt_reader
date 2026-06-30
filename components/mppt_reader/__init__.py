@@ -1,2 +1,3 @@
-from .sensor import MPPTReader
+from .component import MPPTReader
+
 
