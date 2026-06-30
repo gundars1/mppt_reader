@@ -1,3 +1,3 @@
-from .component import MPPTReader
+from .mppt_reader import MPPTReader
 
 
