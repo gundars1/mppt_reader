@@ -1,37 +1,40 @@
 #pragma once
 
-#include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
-#include "esphome/components/gpio/output/gpio_output.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/core/component.h"
+#include "esphome/core/gpio.h"
 
 namespace esphome {
 namespace mppt_reader {
 
-class MPPTReader : public Component {
+class MpptReader : public Component, public uart::UARTDevice {
  public:
-  uart::UARTComponent *uart_{nullptr};
-  gpio::GPIOOutput *dir_pin_{nullptr};
-
-  sensor::Sensor *batt_v_{nullptr};
-  sensor::Sensor *pv_v_{nullptr};
-  sensor::Sensor *charge_a_{nullptr};
-  sensor::Sensor *daily_{nullptr};
-  sensor::Sensor *total_{nullptr};
-  sensor::Sensor *power_{nullptr};
-
-  void set_uart(uart::UARTComponent *u) { uart_ = u; }
-  void set_dir_pin(gpio::GPIOBinaryOutput *d) { dir_pin_ = d; }
-
-  void set_batt_voltage_sensor(sensor::Sensor *s) { batt_v_ = s; }
-  void set_pv_voltage_sensor(sensor::Sensor *s) { pv_v_ = s; }
-  void set_charge_current_sensor(sensor::Sensor *s) { charge_a_ = s; }
-  void set_daily_energy_sensor(sensor::Sensor *s) { daily_ = s; }
-  void set_total_energy_sensor(sensor::Sensor *s) { total_ = s; }
-  void set_battery_power_sensor(sensor::Sensor *s) { power_ = s; }
+  MpptReader(uart::UARTComponent *parent, GPIOPin *de_pin);
 
   void setup() override;
   void loop() override;
+
+  void set_pv_voltage_sensor(sensor::Sensor *s) { pv_voltage_ = s; }
+  void set_batt_voltage_sensor(sensor::Sensor *s) { batt_voltage_ = s; }
+  void set_current_sensor(sensor::Sensor *s) { current_ = s; }
+  void set_daily_wh_sensor(sensor::Sensor *s) { daily_wh_ = s; }
+  void set_total_wh_sensor(sensor::Sensor *s) { total_wh_ = s; }
+
+ protected:
+  void send_request_();
+  bool read_response_();
+  uint8_t calc_checksum_(const uint8_t *data, uint8_t len);
+
+  GPIOPin *de_pin_;
+  sensor::Sensor *pv_voltage_{nullptr};
+  sensor::Sensor *batt_voltage_{nullptr};
+  sensor::Sensor *current_{nullptr};
+  sensor::Sensor *daily_wh_{nullptr};
+  sensor::Sensor *total_wh_{nullptr};
+
+  uint32_t last_query_{0};
+  uint32_t update_interval_ms_{10000};
 };
 
 }  // namespace mppt_reader
