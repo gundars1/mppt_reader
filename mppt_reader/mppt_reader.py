@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_UART_ID
+from esphome.const import CONF_ID, CONF_UART_ID, CONF_UPDATE_INTERVAL
 from esphome.components import uart, sensor
 from esphome import pins
 
@@ -13,6 +13,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MPPTReader),
     cv.Required(CONF_UART_ID): cv.use_id(uart.UARTComponent),
     cv.Required("de_pin"): pins.gpio_output_pin_schema,
+    cv.Optional(CONF_UPDATE_INTERVAL, default="10s"): cv.update_interval,
     cv.Required("pv_voltage"): sensor.sensor_schema(),
     cv.Required("batt_voltage"): sensor.sensor_schema(),
     cv.Required("current"): sensor.sensor_schema(),
@@ -33,3 +34,6 @@ def to_code(config):
     for key in ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]:
         sens = yield sensor.new_sensor(config[key])
         cg.add(getattr(var, f"set_{key}_sensor")(sens))
+
+    if CONF_UPDATE_INTERVAL in config:
+        cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
