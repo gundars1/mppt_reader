@@ -34,7 +34,6 @@ def to_code(config):
     de_pin = yield cg.gpio_pin_expression(config["de_pin"])
     cg.add(var.set_de_pin(de_pin))
 
-    # Sensors
     for key in ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]:
         sens = yield sensor.new_sensor(config[key])
         cg.add(getattr(var, f"set_{key}_sensor")(sens))
