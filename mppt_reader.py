@@ -1,40 +1,66 @@
-import esphome.codegen as cg
-import esphome.config_validation as cv
-from esphome.components import uart, sensor, output
-from esphome.const import CONF_ID
+from esphome import codegen as cg, config_validation as cv
+from esphome.components import uart
+from esphome.const import (
+    CONF_ID,
+    CONF_UPDATE_INTERVAL,
+)
 
-mppt_reader_ns = cg.esphome_ns.namespace("mppt_reader")
-MPPTReader = mppt_reader_ns.class_("MPPTReader", cg.Component)
+DEPENDENCIES = ["uart"]
+AUTO_LOAD = ["sensor"]
+
+mppt_ns = cg.esphome_ns.namespace("mppt_reader")
+MpptReader = mppt_ns.class_("MpptReader", cg.Component, uart.UARTDevice)
+
+CONF_DE_PIN = "de_pin"
+CONF_PV_VOLTAGE = "pv_voltage"
+CONF_BATT_VOLTAGE = "batt_voltage"
+CONF_CURRENT = "current"
+CONF_DAILY_WH = "daily_wh"
+CONF_TOTAL_WH = "total_wh"
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(MPPTReader),
-
-    cv.Required("uart_id"): cv.use_id(uart.UARTComponent),
-    cv.Required("dir_pin"): cv.use_id(output.BinaryOutput),
-
-    cv.Required("batt_voltage"): cv.use_id(sensor.Sensor),
-    cv.Required("pv_voltage"): cv.use_id(sensor.Sensor),
-    cv.Required("charge_current"): cv.use_id(sensor.Sensor),
-    cv.Required("daily_energy"): cv.use_id(sensor.Sensor),
-    cv.Required("total_energy"): cv.use_id(sensor.Sensor),
-    cv.Required("battery_power"): cv.use_id(sensor.Sensor),
-})
-
+    cv.GenerateID(): cv.declare_id(MpptReader),
+    cv.Required(CONF_DE_PIN): cv.pin,
+    cv.Optional(CONF_UPDATE_INTERVAL, default="10s"): cv.update_interval,
+    cv.Required(CONF_PV_VOLTAGE): cv.sensor.schema(
+        unit_of_measurement="V",
+        accuracy_decimals=1,
+    ),
+    cv.Required(CONF_BATT_VOLTAGE): cv.sensor.schema(
+        unit_of_measurement="V",
+        accuracy_decimals=1,
+    ),
+    cv.Required(CONF_CURRENT): cv.sensor.schema(
+        unit_of_measurement="A",
+        accuracy_decimals=2,
+    ),
+    cv.Required(CONF_DAILY_WH): cv.sensor.schema(
+        unit_of_measurement="Wh",
+        accuracy_decimals=0,
+    ),
+    cv.Required(CONF_TOTAL_WH): cv.sensor.schema(
+        unit_of_measurement="Wh",
+        accuracy_decimals=0,
+    ),
+}).extend(uart.UART_DEVICE_SCHEMA)
 
 
 async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
+    uart_var = await uart.new_uart_device(config)
 
-    uart_comp = await cg.get_variable(config["uart_id"])
-    cg.add(var.set_uart(uart_comp))
+    de_pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
 
-    dir_pin = await cg.get_variable(config["dir_pin"])
-    cg.add(var.set_dir_pin(dir_pin))
+    var = cg.new_Pvariable(config[CONF_ID], uart_var, de_pin)
+    await cg.register_component(var, config)
 
-    cg.add(var.set_batt_voltage_sensor(await cg.get_variable(config["batt_voltage"])))
-    cg.add(var.set_pv_voltage_sensor(await cg.get_variable(config["pv_voltage"])))
-    cg.add(var.set_charge_current_sensor(await cg.get_variable(config["charge_current"])))
-    cg.add(var.set_daily_energy_sensor(await cg.get_variable(config["daily_energy"])))
-    cg.add(var.set_total_energy_sensor(await cg.get_variable(config["total_energy"])))
-    cg.add(var.set_battery_power_sensor(await cg.get_variable(config["battery_power"])))
+    pv = await cg.sensor.new_sensor(config[CONF_PV_VOLTAGE])
+    batt = await cg.sensor.new_sensor(config[CONF_BATT_VOLTAGE])
+    curr = await cg.sensor.new_sensor(config[CONF_CURRENT])
+    daily = await cg.sensor.new_sensor(config[CONF_DAILY_WH])
+    total = await cg.sensor.new_sensor(config[CONF_TOTAL_WH])
 
+    cg.add(var.set_pv_voltage_sensor(pv))
+    cg.add(var.set_batt_voltage_sensor(batt))
+    cg.add(var.set_current_sensor(curr))
+    cg.add(var.set_daily_wh_sensor(daily))
+    cg.add(var.set_total_wh_sensor(total))
