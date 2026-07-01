@@ -1,9 +1,39 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome.const import CONF_ID, CONF_UART_ID
+from esphome.components import uart, sensor
+from esphome import pins
 
-# Definējam C++ namespace un komponentes identifikāciju
+AUTO_LOAD = ["uart"]
+
+# Definējam C++ namespace
 mppt_reader_ns = cg.esphome_ns.namespace("mppt_reader")
-MpptReaderComponent = mppt_reader_ns.class_("MpptReader", cg.Component)
+# Sasaistām ar C++ klasi 'MpptReader'
+MpptReaderComponent = mppt_reader_ns.class_("MpptReader", cg.Component, uart.UARTDevice)
 
-# Tukša shēma, jo reālo YAML konfigurāciju apstrādās mppt_reader.py failā
-CONFIG_SCHEMA = cv.Schema({})
+SENSORS = ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]
+
+# ESPHome meklē tieši šo CONFIG_SCHEMA iekš __init__.py faila!
+CONFIG_SCHEMA = cv.Schema({
+    cv.GenerateID(): cv.declare_id(MpptReaderComponent),
+    cv.Required(CONF_UART_ID): cv.use_id(uart.UARTComponent),
+    cv.Required("de_pin"): pins.gpio_output_pin_schema,
+    **{
+        cv.Required(key): sensor.sensor_schema()
+        for key in SENSORS
+    }
+}).extend(cv.COMPONENT_SCHEMA)
+
+async def to_code(config):
+    # Paņemam UART un DE pin konfigurāciju
+    uart_component = await cg.get_variable(config[CONF_UART_ID])
+    de_pin = await cg.gpio_pin_expression(config["de_pin"])
+
+    # Izveidojam C++ objektu, nododot tam abus nepieciešamos argumentus konstruktorā
+    var = cg.new_Pvariable(config[CONF_ID], uart_component, de_pin)
+    await cg.register_component(var, config)
+
+    # Reģistrējam sensorus
+    for key in SENSORS:
+        sens = await sensor.new_sensor(config[key])
+        cg.add(getattr(var, f"set_{key}_sensor")(sens))
