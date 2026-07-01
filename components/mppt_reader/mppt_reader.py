@@ -7,7 +7,7 @@ from esphome import pins
 AUTO_LOAD = ["uart"]
 
 mppt_reader_ns = cg.esphome_ns.namespace("mppt_reader")
-MPPTReader = mppt_reader_ns.class_("MPPTReader", cg.Component, uart.UARTDevice)
+MPPTReader = mppt_reader_ns.class_("MpptReader", cg.Component, uart.UARTDevice)
 
 SENSORS = ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]
 
