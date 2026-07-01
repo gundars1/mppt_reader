@@ -7,7 +7,7 @@ from esphome import pins
 AUTO_LOAD = ["uart"]
 
 mppt_reader_ns = cg.esphome_ns.namespace("mppt_reader")
-# Svarīgi: Šeit definējam, ka C++ klase ir MpptReader, bet Python mainīgais ir MpptReaderComponent
+# Šis mainīgais tagad sakrīt ar to, ko importējam iekš __init__.py
 MpptReaderComponent = mppt_reader_ns.class_("MpptReader", cg.Component, uart.UARTDevice)
 
 SENSORS = ["pv_voltage", "batt_voltage", "current", "daily_wh", "total_wh"]
@@ -22,20 +22,16 @@ CONFIG_SCHEMA = cv.Schema({
     }
 }).extend(cv.COMPONENT_SCHEMA)
 
-# Pārejam uz moderno async/await sintaksi, ko pieprasa jaunais ESPHome
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    # Ielādējam UART komponenti
     uart_component = await cg.get_variable(config[CONF_UART_ID])
     cg.add(var.set_uart(uart_component))
 
-    # Konfigurējam DE pin
     de_pin = await cg.gpio_pin_expression(config["de_pin"])
     cg.add(var.set_de_pin(de_pin))
 
-    # Reģistrējam sensorus
     for key in SENSORS:
         sens = await sensor.new_sensor(config[key])
         cg.add(getattr(var, f"set_{key}_sensor")(sens))
